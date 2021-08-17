@@ -36,6 +36,9 @@ restart_tmr0 macro
     bcf	    T0IF
     endm
     
+UP      EQU 0
+DOWN	EQU 7      
+	
 PSECT udata_bank0  ;common memory
     reg:    DS 2
     cont:   DS 2
@@ -63,6 +66,8 @@ isr:
    btfsc    T0IF
    call	    int_t0
    
+   btfsc    RBIF
+   call	    int_iocb
 pop:
     swapf   STATUS_TEMP, W
     movwf   STATUS
@@ -75,12 +80,24 @@ int_t0:
     restart_tmr0    ;50ms
     incf    cont
     movf    cont, W
-    sublw   10
+    sublw   20	    ;incrementa 1seg
     btfss   ZERO    ;STATUS, 2
     goto    return_t0
     clrf    cont
-    incf    PORTA
+    incf    PORTC
+    return
+    
 return_t0:   
+    return
+
+int_iocb:
+    banksel PORTA
+    btfss   PORTB, UP
+    incf    PORTA
+    btfss   PORTB, DOWN
+    decf    PORTA
+    bcf	    RBIF
+  
     return
     
 PSECT code, delta=2, abs
@@ -114,13 +131,12 @@ ORG 100h    ; posicion para le codigo
 main:
     call    config_io
     call    config_reloj
+    call    config_iocRB
     call    config_tmr0
     call    config_int_enable
     banksel PORTA
 
 loop:
-  
- 
     goto    loop
 
 config_reloj:
@@ -129,6 +145,16 @@ config_reloj:
     bsf	    IRCF1
     bcf	    IRCF0	; 4 Mhz
     bsf	    SCS
+    return
+    
+config_iocRB:
+    banksel TRISA
+    bsf	    IOCB, UP
+    bsf	    IOCB, DOWN
+    
+    banksel PORTA
+    movf    PORTB, W	
+    bcf	    RBIF	    
     return
     
 config_tmr0:
@@ -141,11 +167,12 @@ config_tmr0:
     restart_tmr0
     return
 
-
 config_int_enable:
     bsf	    GIE		;INTCON
     bsf	    T0IE
-    bcf	    T0IF    
+    bcf	    T0IF 
+    bsf	    RBIE
+    bsf	    RBIF
     return
     
 config_io:
@@ -157,16 +184,22 @@ config_io:
     banksel TRISA	; Banco 01
     clrf    TRISA	;salida contador 1
     clrf    TRISC	;salida display 1
-    bsf	    TRISB, 0
-    bsf	    TRISB, 1
+    bsf	    TRISB, UP	;RB0
+    bsf	    TRISB, DOWN ;RB7
     clrf    TRISD	;salida display 2 
     clrf    TRISE	;salida contador 2
+    ;configuración habilitar pull up
+    bcf	    OPTION_REG, 7   ;RBPU
+    bsf	    WPUB, UP
+    bsf	    WPUB, DOWN
     
     banksel PORTA	; Banco 00
     clrf    PORTB
     clrf    PORTA
     clrf    PORTC
     clrf    PORTD
+    
+    
   
     return
 
