@@ -2,12 +2,8 @@
 ; Dispositivo: PIC16F887
 ; Autor:       Diego Aguilar
 ; Compilador:  pic-as (v2.30), MBPLABX v5.40
-;
-; Programa:    contador 
-; Hardware:    LEDs 
-;
 ; Creado: 16 agosto, 2021
-; Última modificación:  agosto, 2021
+; Última modificación:  18 agosto, 2021
 
 PROCESSOR 16F887
  #include <xc.inc>
@@ -40,9 +36,11 @@ UP      EQU 0
 DOWN	EQU 7      
 	
 PSECT udata_bank0  ;common memory
-    reg:    DS 2
-    cont:   DS 2
-    
+    reg:    DS 1
+    reg2:   DS 1
+    cont:   DS 1
+    cont1:  DS 1
+
 PSECT udata_shr  ;common memory
     W_TEMP:	    DS 1
     STATUS_TEMP:    DS 1
@@ -84,7 +82,16 @@ int_t0:
     btfss   ZERO    ;STATUS, 2
     goto    return_t0
     clrf    cont
-    incf    PORTC
+    incf    PORTA
+    
+    incf    reg
+    movf    reg, W
+    sublw   10
+    btfss   ZERO
+    goto    return_t0
+    incf    reg2
+    clrf    reg
+    
     return
     
 return_t0:   
@@ -93,9 +100,9 @@ return_t0:
 int_iocb:
     banksel PORTA
     btfss   PORTB, UP
-    incf    PORTA
+    incf    cont1
     btfss   PORTB, DOWN
-    decf    PORTA
+    decf    cont1
     bcf	    RBIF
   
     return
@@ -137,6 +144,15 @@ main:
     banksel PORTA
 
 loop:
+    	
+    movf    reg, w
+    call    tabla
+    movwf   PORTC
+    
+    movf    reg2, W
+    call    tabla
+    movwf   PORTD
+    
     goto    loop
 
 config_reloj:
@@ -170,9 +186,9 @@ config_tmr0:
 config_int_enable:
     bsf	    GIE		;INTCON
     bsf	    T0IE
-    bcf	    T0IF 
-    bsf	    RBIE
-    bsf	    RBIF
+    bsf	    T0IF 
+    bcf	    RBIE
+    bcf	    RBIF
     return
     
 config_io:
@@ -187,7 +203,7 @@ config_io:
     bsf	    TRISB, UP	;RB0
     bsf	    TRISB, DOWN ;RB7
     clrf    TRISD	;salida display 2 
-    clrf    TRISE	;salida contador 2
+
     ;configuración habilitar pull up
     bcf	    OPTION_REG, 7   ;RBPU
     bsf	    WPUB, UP
@@ -199,8 +215,11 @@ config_io:
     clrf    PORTC
     clrf    PORTD
     
-    
-  
+
+    clrf   reg2
+    clrf   reg
+    clrf   cont
+    clrf   cont1
     return
 
 end

@@ -2489,8 +2489,10 @@ UP EQU 0
 DOWN EQU 7
 
 PSECT udata_bank0 ;common memory
-    reg: DS 2
-    cont: DS 2
+    reg: DS 1
+    reg2: DS 1
+    cont: DS 1
+    cont1: DS 1
 
 PSECT udata_shr ;common memory
     W_TEMP: DS 1
@@ -2533,7 +2535,16 @@ int_t0:
     btfss ((STATUS) and 07Fh), 2 ;STATUS, 2
     goto return_t0
     clrf cont
-    incf PORTC
+    incf PORTA
+
+    incf reg
+    movf reg, W
+    sublw 10
+    btfss ((STATUS) and 07Fh), 2
+    goto return_t0
+    incf reg2
+    clrf reg
+
     return
 
 return_t0:
@@ -2542,9 +2553,9 @@ return_t0:
 int_iocb:
     banksel PORTA
     btfss PORTB, UP
-    incf PORTA
+    incf cont1
     btfss PORTB, DOWN
-    decf PORTA
+    decf cont1
     bcf ((INTCON) and 07Fh), 0
 
     return
@@ -2586,6 +2597,15 @@ main:
     banksel PORTA
 
 loop:
+
+    movf reg, w
+    call tabla
+    movwf PORTC
+
+    movf reg2, W
+    call tabla
+    movwf PORTD
+
     goto loop
 
 config_reloj:
@@ -2619,9 +2639,9 @@ config_tmr0:
 config_int_enable:
     bsf ((INTCON) and 07Fh), 7 ;INTCON
     bsf ((INTCON) and 07Fh), 5
-    bcf ((INTCON) and 07Fh), 2
-    bsf ((INTCON) and 07Fh), 3
-    bsf ((INTCON) and 07Fh), 0
+    bsf ((INTCON) and 07Fh), 2
+    bcf ((INTCON) and 07Fh), 3
+    bcf ((INTCON) and 07Fh), 0
     return
 
 config_io:
@@ -2636,7 +2656,7 @@ config_io:
     bsf TRISB, UP ;((PORTB) and 07Fh), 0
     bsf TRISB, DOWN ;((PORTB) and 07Fh), 7
     clrf TRISD ;salida display 2
-    clrf TRISE ;salida contador 2
+
     ;configuración habilitar pull up
     bcf OPTION_REG, 7 ;RBPU
     bsf WPUB, UP
@@ -2649,7 +2669,10 @@ config_io:
     clrf PORTD
 
 
-
+    clrf reg2
+    clrf reg
+    clrf cont
+    clrf cont1
     return
 
 end
